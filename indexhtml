@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La culebrita y las puertas</title>
+<style>
+:root{
+  --piedra:#dfe6d3; --musgo:#2f7d4f; --musgo-osc:#1d4d31; --madera:#8a5a2b;
+  --madera-osc:#5c3a18; --tinta:#1f2a22; --golpe:#b4452f; --luz:#f3e7a1;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{--piedra:#1c261f; --tinta:#e8efe0; --musgo:#5fbf86; --musgo-osc:#a8e0bf; --madera:#a8723a; --madera-osc:#3a2410; --golpe:#e8795f; --luz:#f3e7a1; color-scheme: dark;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--piedra);color:var(--tinta);font-family:Georgia,"Times New Roman",serif;line-height:1.5;min-height:100vh}
+main{max-width:760px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.7rem;margin:0 0 4px}
+.sub{margin:0 0 16px;max-width:60ch}
+.estado{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.chip{border:2px solid var(--musgo-osc);border-radius:999px;padding:2px 12px;font-family:"Courier New",monospace;font-size:.95rem}
+.sala{border:2px solid var(--musgo-osc);border-radius:14px;padding:16px;background:color-mix(in srgb,var(--piedra) 85%,var(--musgo) 15%)}
+.sala h2{margin:0 0 4px;font-size:1.2rem}
+.puertas{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+.puerta{cursor:pointer;border:4px solid var(--madera-osc);border-radius:70px 70px 6px 6px;background:var(--madera);color:#fff;min-height:190px;padding:16px 6px 10px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;gap:6px;font:inherit;transition:transform .15s,background .3s}
+.puerta:hover{transform:translateY(-3px)}
+.puerta:focus-visible{outline:4px solid var(--luz);outline-offset:3px}
+.puerta code{background:rgba(0,0,0,.4);border-radius:6px;padding:4px 6px;font-size:.8rem;text-align:center;word-break:break-word;width:100%}
+.puerta .if-block{color:#a8e0bf;font-weight:bold}
+.puerta .else-block{color:#f5b0a1;font-size:.75rem}
+.puerta.abre{background:var(--luz);border-color:var(--musgo);color:var(--tinta)}
+.puerta.abre code{background:rgba(0,0,0,.12);color:var(--tinta)}
+.puerta.cerrada{animation:golpe .35s}
+@keyframes golpe{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.culebra{display:block;width:150px;height:75px;margin:0 auto}
+.culebra.mueve{animation:repta .6s}
+@keyframes repta{50%{transform:translateX(30px) rotate(4deg)}}
+.codigo{margin:12px 0 0;padding:12px;border-radius:10px;background:var(--tinta);color:var(--piedra);font-family:"Courier New",monospace;font-size:.9rem;overflow-x:auto;white-space:pre-wrap;min-height:5.5em}
+.ok{color:var(--musgo)} .mal{color:var(--golpe)}
+@media (prefers-color-scheme: dark){.codigo{background:#0d130f;color:#dfe6d3}}
+.fin{text-align:center;padding:24px 8px}
+button.btn{font:inherit;cursor:pointer;border:2px solid var(--musgo-osc);background:var(--musgo);color:#fff;border-radius:10px;padding:8px 18px}
+button.btn:focus-visible{outline:4px solid var(--luz);outline-offset:3px}
+@media (max-width:480px){.puertas{gap:6px}.puerta{min-height:170px}.puerta code{font-size:.7rem}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <h1>La culebrita y las puertas</h1>
+  <p class="sub">Cada puerta implementa una estructura de decisión <code>if / else</code>. Si la condición del <code>if</code> se evalúa como verdadera (<strong>true</strong>), avanzas. Si se evalúa como falsa (<strong>false</strong>), la culebrita entra en el bloque <code>else</code>, pierde una vida y recibe un golpe.</p>
+  <div class="estado" id="estado" aria-live="polite"></div>
+  <section class="sala" id="sala"></section>
+</main>
+
+<script>
+// Estado de la culebrita
+let s;
+
+const salas = [
+  { nombre:"Cueva de entrada", texto:"Entras con las manos vacías.",
+    entra(){},
+    puertas:[
+      { c:"manzanas > 0", f:s=>s.manzanas>0, va:1 },
+      { c:"!llave",       f:s=>!s.llave,      va:1 },
+      { c:"llave",        f:s=>s.llave,       va:1 }
+    ]},
+  { nombre:"Jardín de manzanas", texto:"Recoges 3 manzanas.",
+    entra(s){ s.manzanas += 3; },
+    puertas:[
+      { c:"manzanas < 3",               f:s=>s.manzanas<3,               va:2 },
+      { c:"manzanas >= 3 && !llave",    f:s=>s.manzanas>=3&&!s.llave,    va:2 },
+      { c:"manzanas == 0",              f:s=>s.manzanas==0,              va:2 }
+    ]},
+  { nombre:"Taller del herrero", texto:"Encuentras una llave y la guardas.",
+    entra(s){ s.llave = true; },
+    puertas:[
+      { c:"!llave",                     f:s=>!s.llave,                   va:3 },
+      { c:"llave && manzanas > 5",      f:s=>s.llave&&s.manzanas>5,      va:3 },
+      { c:"llave && manzanas >= 3",     f:s=>s.llave&&s.manzanas>=3,     va:3 }
+    ]},
+  { nombre:"Estanque", texto:"Te comes una manzana mientras descansas.",
+    entra(s){ s.manzanas -= 1; },
+    puertas:[
+      { c:"manzanas >= 3",              f:s=>s.manzanas>=3,              va:4 },
+      { c:"manzanas % 2 == 0",          f:s=>s.manzanas%2==0,            va:4 },
+      { c:"manzanas % 2 != 0",          f:s=>s.manzanas%2!=0,            va:4 }
+    ]},
+  { nombre:"Pasillo final", texto:"Al fondo se ve una luz.",
+    entra(){},
+    puertas:[
+      { c:"llave && manzanas == 2",     f:s=>s.llave&&s.manzanas==2,     va:"salida" },
+      { c:"manzanas > 2 || !llave",     f:s=>s.manzanas>2||!s.llave,     va:"salida" },
+      { c:"manzanas == 0",              f:s=>s.manzanas==0,              va:"salida" }
+    ]}
+];
+
+const culebraSVG = `<svg class="culebra" id="culebra" viewBox="0 0 150 75" role="img" aria-label="Culebrita">
+  <path d="M10 55 C30 20, 55 20, 70 45 S110 70, 125 35" fill="none" stroke="var(--musgo)" stroke-width="16" stroke-linecap="round"/>
+  <path d="M10 55 C30 20, 55 20, 70 45 S110 70, 125 35" fill="none" stroke="var(--musgo-osc)" stroke-width="3" stroke-dasharray="2 12" stroke-linecap="round"/>
+  <circle cx="128" cy="32" r="11" fill="var(--musgo)"/>
+  <circle cx="131" cy="28" r="3" fill="#fff"/><circle cx="132" cy="28" r="1.4" fill="#000"/>
+  <path d="M138 36 l10 3 m-10 -3 l9 6" stroke="var(--golpe)" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+const mezclar = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const $ = id => document.getElementById(id);
+
+function iniciar(){
+  s = { manzanas:0, llave:false, vidas:3, sala:0 };
+  entrar(0);
+}
+
+function entrar(n){
+  s.sala = n;
+  salas[n].entra(s);
+  pintar();
+}
+
+function pintar(msg){
+  const sala = salas[s.sala];
+  $("estado").innerHTML =
+    `<span class="chip">manzanas = ${s.manzanas}</span>` +
+    `<span class="chip">llave = ${s.llave}</span>` +
+    `<span class="chip">vidas = ${"♥".repeat(s.vidas)||"0"}</span>` +
+    `<span class="chip">sala ${s.sala+1} de ${salas.length}</span>`;
+  const puertas = mezclar(sala.puertas);
+  $("sala").innerHTML =
+    `<h2>${sala.nombre}</h2><p>${sala.texto} ¿Qué puerta eliges?</p>` +
+    `<div class="puertas">${puertas.map((p,i)=>`
+      <button class="puerta" data-i="${i}" aria-label="Puerta con condición ${p.c}">
+        <code class="if-block">if (${p.c}) {<br>&nbsp;&nbsp;abrir();<br>}</code>
+        <code class="else-block">else {<br>&nbsp;&nbsp;golpe();<br>}</code>
+      </button>`).join("")}</div>` +
+    culebraSVG +
+    `<pre class="codigo" id="codigo">${msg || "Elige una opción para evaluar la estructura de decisión (if / else)."}</pre>`;
+  document.querySelectorAll(".puerta").forEach(b=>b.onclick=()=>elegir(puertas[b.dataset.i], b));
+}
+
+function valores(cond){
+  return cond.replace(/\b(manzanas|llave)\b/g, v => s[v]);
+}
+
+function elegir(p, boton){
+  document.querySelectorAll(".puerta").forEach(b=>b.onclick=null);
+  
+  // Evaluación de la condición (Estructura de decisión IF / ELSE)
+  const verdad = p.f(s);
+  
+  let traza = `// Evaluación de la condición:\n`;
+  traza += `if (${p.c}) {\n`;
+  traza += `  // Sustitución: if (${valores(p.c)})\n`;
+  traza += `  // Resultado: ${verdad}\n`;
+
+  $("culebra").classList.add("mueve");
+
+  if (verdad) {
+    // Bloque IF (Verdadero)
+    traza += `  abrirPuerta(); // SE EJECUTA EL BLOQUE IF\n} else {\n  perderVida();\n}`;
+    boton.classList.add("abre");
+    $("codigo").innerHTML = traza + `\n\n<span class="ok">✓ Condición TRUE: La puerta se abre.</span>`;
+    setTimeout(()=> p.va==="salida" ? ganar() : entrar(p.va), 1300);
+  } else {
+    // Bloque ELSE (Falso)
+    traza += `  abrirPuerta();\n} else {\n  perderVida(); // SE EJECUTA EL BLOQUE ELSE\n}`;
+    boton.classList.add("cerrada");
+    s.vidas--;
+    $("codigo").innerHTML = traza + `\n\n<span class="mal">✗ Condición FALSE: Entra en el 'else' (vidas = ${s.vidas}).</span>`;
+    setTimeout(()=> s.vidas<=0 ? perder() : pintar(), 1500);
+  }
+}
+
+function fin(titulo, texto){
+  $("sala").innerHTML = `<div class="fin"><h2>${titulo}</h2><p>${texto}</p>${culebraSVG}<p><button class="btn" id="otra">Jugar otra vez</button></p></div>`;
+  $("otra").onclick = iniciar;
+}
+function ganar(){ fin("¡Encontraste la salida!", `Llegaste con ${s.vidas} vida(s) resolviendo correctamente las decisiones logicas.`); }
+function perder(){ fin("Se acabaron las vidas", "Revisa la tabla de verdad y los valores de las variables antes de tomar una decisión."); }
+
+iniciar();
+</script>
+</body>
+</html>
